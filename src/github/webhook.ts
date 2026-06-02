@@ -1,5 +1,6 @@
 import type { Context } from "hono";
 import { getPullRequestFiles } from "./pullRequests";
+import { analyzeCode } from "../ai/analyzer";
 
 export async function handleWebhook(c: Context) {
   const payload = await c.req.json();
@@ -12,12 +13,17 @@ export async function handleWebhook(c: Context) {
   const owner = base.repo.owner.login;
   const repo = base.repo.name;
 
+  console.log(`PR #${number} on ${owner}/${repo}`);
+
   const files = await getPullRequestFiles(owner, repo, number);
 
-  console.log(`Changed files (${files.length}):`);
   for (const file of files) {
-    console.log(`  [${file.status}] ${file.filename}`);
+    if (!file.patch) continue; // skip files with no diff
+
+    console.log(`\nReviewing ${file.filename}...`);
+    const review = await analyzeCode(file.filename, file.status, file.patch);
+    console.log(review);
   }
 
-  return c.json({ success: true, filesReviewed: files.length });
+  return c.json({ success: true });
 }
