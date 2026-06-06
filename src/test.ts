@@ -1,12 +1,19 @@
 import { getPullRequestFiles } from "./github/pullRequests";
 import { analyzeCode } from "./ai/analyzer";
+import { postReviewComment } from "./github/comments";
 
-const files = await getPullRequestFiles("chirraaggggg", "gitwhisperer-test", 1);
+const owner = "chirraaggggg";
+const repo = "gitwhisperer-test";
+const pullNumber = 1;
+
+const files = await getPullRequestFiles(owner, repo, pullNumber);
+
+let fullReview = "";
 
 for (const file of files) {
   if (!file.patch) continue;
-
-  console.log(`\n--- Review for ${file.filename} ---`);
   const review = await analyzeCode(file.filename, file.status, file.patch);
-  console.log(review);
+  fullReview += `### ${file.filename}\n${review}\n\n`;
 }
+
+await postReviewComment(owner, repo, pullNumber, fullReview);
