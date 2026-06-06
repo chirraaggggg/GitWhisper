@@ -1,15 +1,13 @@
-import { Octokit } from "@octokit/rest";
-import { env } from "../shared/env";
-
-const octokit = new Octokit({
-  auth: env.GITHUB_TOKEN,
-});
+import { getInstallationOctokit } from "./octokit";
 
 export async function getPullRequestFiles(
   owner: string,
   repo: string,
-  pullNumber: number
+  pullNumber: number,
+  installationId: number
 ) {
+  const octokit = await getInstallationOctokit(installationId);
+
   const response = await octokit.pulls.listFiles({
     owner,
     repo,

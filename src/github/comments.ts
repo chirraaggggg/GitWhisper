@@ -1,16 +1,14 @@
-import { Octokit } from "@octokit/rest";
-import { env } from "../shared/env";
-
-const octokit = new Octokit({
-  auth: env.GITHUB_TOKEN,
-});
+import { getInstallationOctokit } from "./octokit";
 
 export async function postReviewComment(
   owner: string,
   repo: string,
   pullNumber: number,
-  body: string
+  body: string,
+  installationId: number
 ) {
+  const octokit = await getInstallationOctokit(installationId);
+
   await octokit.issues.createComment({
     owner,
     repo,
