@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GitWhisperer — AI Code Reviews</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+--bg:#0a0a0a;
+--bg2:#111111;
+--bg3:#1a1a1a;
+--border:#222;
+--border2:#2a2a2a;
+--text:#f0f0f0;
+--muted:#666;
+--muted2:#444;
+--accent:#e8e0d0;
+--green:#22c55e;
+--green-dim:#16a34a22;
+}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;font-weight:300;line-height:1.6;min-height:100vh;overflow-x:hidden}
+
+nav{position:fixed;top:0;left:0;right:0;z-index:100;padding:1.25rem 2rem;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);background:rgba(10,10,10,0.85);backdrop-filter:blur(12px)}
+.logo{font-family:'DM Mono',monospace;font-size:14px;letter-spacing:0.05em;color:var(--accent)}
+.logo span{color:var(--muted)}
+nav a{font-size:13px;color:var(--muted);text-decoration:none;transition:color 0.2s}
+nav a:hover{color:var(--text)}
+.nav-links{display:flex;gap:2rem;align-items:center}
+.nav-cta{background:var(--text);color:var(--bg)!important;padding:0.5rem 1.25rem;border-radius:6px;font-weight:500;font-size:13px}
+.nav-cta:hover{background:var(--accent)!important;color:var(--bg)!important}
+
+.hero{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:8rem 2rem 4rem;position:relative}
+.hero::before{content:'';position:absolute;top:0;left:0;right:0;bottom:0;background:radial-gradient(ellipse 60% 50% at 50% 30%,rgba(232,224,208,0.04) 0%,transparent 70%);pointer-events:none}
+
+.badge{display:inline-flex;align-items:center;gap:0.5rem;background:var(--green-dim);border:1px solid rgba(34,197,94,0.2);color:var(--green);font-family:'DM Mono',monospace;font-size:11px;padding:0.35rem 0.85rem;border-radius:100px;margin-bottom:2.5rem;letter-spacing:0.05em}
+.badge-dot{width:6px;height:6px;border-radius:50%;background:var(--green);animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
+
+h1{font-size:clamp(2.5rem,6vw,4.5rem);font-weight:300;line-height:1.15;letter-spacing:-0.02em;max-width:800px;margin-bottom:1.5rem}
+h1 em{font-style:normal;color:var(--muted);font-weight:300}
+.hero p{font-size:1.1rem;color:var(--muted);max-width:480px;margin-bottom:3rem;font-weight:300;line-height:1.7}
+
+.cta-group{display:flex;gap:1rem;align-items:center;flex-wrap:wrap;justify-content:center}
+.btn-primary{display:inline-flex;align-items:center;gap:0.6rem;background:var(--text);color:var(--bg);padding:0.85rem 2rem;border-radius:8px;text-decoration:none;font-weight:500;font-size:15px;transition:all 0.2s;letter-spacing:-0.01em}
+.btn-primary:hover{background:var(--accent);transform:translateY(-1px)}
+.btn-primary svg{width:18px;height:18px}
+.btn-ghost{display:inline-flex;align-items:center;gap:0.5rem;color:var(--muted);font-size:14px;text-decoration:none;transition:color 0.2s;padding:0.85rem 1rem}
+.btn-ghost:hover{color:var(--text)}
+
+.terminal{margin:5rem auto 0;max-width:680px;width:100%;background:var(--bg2);border:1px solid var(--border2);border-radius:12px;overflow:hidden}
+.terminal-bar{background:var(--bg3);padding:0.75rem 1rem;display:flex;align-items:center;gap:0.5rem;border-bottom:1px solid var(--border)}
+.dot{width:10px;height:10px;border-radius:50%}
+.dot-r{background:#ff5f57}.dot-y{background:#ffbd2e}.dot-g{background:#28c840}
+.terminal-title{font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);margin-left:auto;margin-right:auto;padding-right:30px}
+.terminal-body{padding:1.5rem;font-family:'DM Mono',monospace;font-size:13px;line-height:1.8;text-align:left}
+.t-muted{color:var(--muted2)}
+.t-green{color:var(--green)}
+.t-accent{color:var(--accent)}
+.t-white{color:#ccc}
+.t-comment{color:#444;font-style:italic}
+.t-line{display:block;padding:0.1rem 0}
+
+section{padding:6rem 2rem;max-width:1100px;margin:0 auto}
+.section-label{font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:1rem}
+.section-title{font-size:clamp(1.8rem,4vw,2.8rem);font-weight:300;letter-spacing:-0.02em;line-height:1.2;margin-bottom:1rem}
+.section-sub{color:var(--muted);font-size:1rem;max-width:480px;font-weight:300;line-height:1.7}
+
+.features{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:1px;background:var(--border);border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-top:4rem}
+.feature{background:var(--bg);padding:2rem;transition:background 0.2s}
+.feature:hover{background:var(--bg2)}
+.feature-icon{width:36px;height:36px;border:1px solid var(--border2);border-radius:8px;display:flex;align-items:center;justify-content:center;margin-bottom:1.25rem;color:var(--muted)}
+.feature-icon svg{width:16px;height:16px}
+.feature h3{font-size:15px;font-weight:500;margin-bottom:0.5rem;letter-spacing:-0.01em}
+.feature p{font-size:13px;color:var(--muted);line-height:1.6;font-weight:300}
+
+.comment-card{margin:4rem auto 0;max-width:680px;background:var(--bg2);border:1px solid var(--border2);border-radius:12px;overflow:hidden}
+.comment-header{padding:1rem 1.25rem;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:0.75rem}
+.bot-avatar{width:28px;height:28px;border-radius:50%;background:var(--bg3);border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);flex-shrink:0}
+.comment-meta{font-size:13px}
+.comment-meta strong{font-weight:500;color:var(--text)}
+.comment-meta span{color:var(--muted);font-size:12px;margin-left:0.5rem}
+.bot-badge{background:rgba(59,130,246,0.1);border:1px solid rgba(59,130,246,0.2);color:#60a5fa;font-size:10px;font-family:'DM Mono',monospace;padding:0.15rem 0.5rem;border-radius:4px;margin-left:0.5rem}
+.comment-body{padding:1.5rem 1.25rem;font-size:14px;color:#bbb;line-height:1.7;font-weight:300}
+.comment-body strong{color:var(--text);font-weight:500;display:block;margin-bottom:0.75rem;font-size:15px}
+.comment-item{display:flex;gap:0.75rem;margin-bottom:0.6rem;align-items:flex-start}
+.comment-bullet{color:var(--green);margin-top:0.15rem;flex-shrink:0;font-size:12px}
+.comment-footer{padding:0.75rem 1.25rem;border-top:1px solid var(--border);font-size:12px;color:var(--muted);font-family:'DM Mono',monospace}
+
+.how{margin-top:4rem;display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:0;position:relative}
+.step{padding:2rem;position:relative}
+.step::before{content:attr(data-n);position:absolute;top:2rem;right:1.5rem;font-family:'DM Mono',monospace;font-size:11px;color:var(--muted2)}
+.step-line{width:40px;height:1px;background:var(--border2);margin:1.5rem 0}
+.step h3{font-size:14px;font-weight:500;margin-bottom:0.5rem}
+.step p{font-size:13px;color:var(--muted);line-height:1.6;font-weight:300}
+.step-num{font-family:'DM Mono',monospace;font-size:11px;color:var(--muted2);margin-bottom:1rem}
+
+.divider{border:none;border-top:1px solid var(--border);margin:0}
+
+.cta-section{text-align:center;padding:8rem 2rem}
+.cta-section h2{font-size:clamp(2rem,5vw,3.5rem);font-weight:300;letter-spacing:-0.02em;margin-bottom:1rem}
+.cta-section p{color:var(--muted);margin-bottom:2.5rem;font-size:1rem;font-weight:300}
+
+footer{border-top:1px solid var(--border);padding:2rem;display:flex;align-items:center;justify-content:space-between;max-width:1100px;margin:0 auto}
+.footer-logo{font-family:'DM Mono',monospace;font-size:12px;color:var(--muted)}
+.footer-links{display:flex;gap:1.5rem}
+.footer-links a{font-size:12px;color:var(--muted);text-decoration:none;transition:color 0.2s}
+.footer-links a:hover{color:var(--text)}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="logo">git<span>-</span>whisper</div>
+  <div class="nav-links">
+    <a href="#how">How it works</a>
+    <a href="https://github.com/apps/git-whisper/installations/new" class="nav-cta">Install free</a>
+  </div>
+</nav>
+
+<div class="hero">
+  <div class="badge">
+    <span class="badge-dot"></span>
+    live on every pull request
+  </div>
+  <h1>AI code reviews,<br><em>instantly on every PR</em></h1>
+  <p>GitWhisperer automatically reviews your pull requests the moment they open — catching bugs, security issues, and performance problems before they ship.</p>
+  <div class="cta-group">
+    <a href="https://github.com/apps/git-whisper/installations/new" class="btn-primary">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+      Install on GitHub
+    </a>
+    <a href="https://github.com/chirraaggggg/GitWhisperer" class="btn-ghost">View source →</a>
+  </div>
+
+  <div class="terminal">
+    <div class="terminal-bar">
+      <div class="dot dot-r"></div>
+      <div class="dot dot-y"></div>
+      <div class="dot dot-g"></div>
+      <div class="terminal-title">pull request #42 — feat/user-auth</div>
+    </div>
+    <div class="terminal-body">
+      <span class="t-line"><span class="t-muted">→</span> <span class="t-white">PR opened by</span> <span class="t-accent">chirraaggggg</span></span>
+      <span class="t-line"><span class="t-muted">→</span> <span class="t-white">fetching changed files</span> <span class="t-muted">3 files, +142 -18</span></span>
+      <span class="t-line"><span class="t-muted">→</span> <span class="t-white">analyzing diffs with Llama 3.3</span></span>
+      <span class="t-line t-comment">  # reviewing auth/login.ts...</span>
+      <span class="t-line t-comment">  # reviewing middleware/validate.ts...</span>
+      <span class="t-line">&nbsp;</span>
+      <span class="t-line"><span class="t-green">✓</span> <span class="t-white">review posted to PR</span> <span class="t-muted">in 3.2s</span></span>
+    </div>
+  </div>
+</div>
+
+<hr class="divider">
+
+<section>
+  <div class="section-label">features</div>
+  <div class="section-title">Everything a senior dev<br>would catch</div>
+  <div class="section-sub">GitWhisperer reads the actual diff — not the whole file — and gives targeted, actionable feedback.</div>
+
+  <div class="features">
+    <div class="feature">
+      <div class="feature-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
+      </div>
+      <h3>Bug detection</h3>
+      <p>Catches logic errors, null pointer risks, off-by-one errors, and missing edge cases in your diff.</p>
+    </div>
+    <div class="feature">
+      <div class="feature-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+      </div>
+      <h3>Security review</h3>
+      <p>Flags injection vulnerabilities, insecure patterns, hardcoded secrets, and auth issues.</p>
+    </div>
+    <div class="feature">
+      <div class="feature-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+      </div>
+      <h3>Performance</h3>
+      <p>Identifies unnecessary re-renders, N+1 queries, missing indexes, and inefficient algorithms.</p>
+    </div>
+    <div class="feature">
+      <div class="feature-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/></svg>
+      </div>
+      <h3>Code quality</h3>
+      <p>Reviews readability, naming conventions, and suggests cleaner patterns — without being pedantic.</p>
+    </div>
+    <div class="feature">
+      <div class="feature-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+      </div>
+      <h3>Instant</h3>
+      <p>Review posted within seconds of opening a PR. No waiting, no scheduling, no context switching.</p>
+    </div>
+    <div class="feature">
+      <div class="feature-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 00-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0020 4.77 5.07 5.07 0 0019.91 1S18.73.65 16 2.48a13.38 13.38 0 00-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 005 4.77a5.44 5.44 0 00-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 009 18.13V22"/></svg>
+      </div>
+      <h3>Any repo</h3>
+      <p>Works with any GitHub repository. Install once, works on all your repos automatically.</p>
+    </div>
+  </div>
+</section>
+
+<hr class="divider">
+
+<section>
+  <div class="section-label">example output</div>
+  <div class="section-title">What a review looks like</div>
+  <div class="section-sub">GitWhisperer posts a structured comment directly on your PR — no new tools to learn.</div>
+
+  <div class="comment-card">
+    <div class="comment-header">
+      <div class="bot-avatar">gw</div>
+      <div class="comment-meta">
+        <strong>git-whisper</strong>
+        <span class="bot-badge">bot</span>
+        <span>commented just now</span>
+      </div>
+    </div>
+    <div class="comment-body">
+      <strong>auth/login.ts</strong>
+      <div class="comment-item">
+        <span class="comment-bullet">⚠</span>
+        <span>No rate limiting on the login endpoint — this is vulnerable to brute force attacks. Consider adding express-rate-limit or similar middleware.</span>
+      </div>
+      <div class="comment-item">
+        <span class="comment-bullet">⚠</span>
+        <span>Password comparison uses <code style="background:var(--bg3);padding:0.1rem 0.4rem;border-radius:4px;font-family:'DM Mono',monospace;font-size:12px">==</code> instead of a constant-time comparison function — timing attacks are possible. Use <code style="background:var(--bg3);padding:0.1rem 0.4rem;border-radius:4px;font-family:'DM Mono',monospace;font-size:12px">crypto.timingSafeEqual</code>.</span>
+      </div>
+      <div class="comment-item">
+        <span class="comment-bullet" style="color:#60a5fa">→</span>
+        <span>JWT expiry is set to 30 days — consider shortening to 24h with refresh tokens for better security posture.</span>
+      </div>
+      <div class="comment-item">
+        <span class="comment-bullet" style="color:var(--green)">✓</span>
+        <span>Error messages are generic and don't leak whether the email or password is wrong. Good practice.</span>
+      </div>
+    </div>
+    <div class="comment-footer">powered by gitwhisper · llama-3.3-70b via groq</div>
+  </div>
+</section>
+
+<hr class="divider">
+
+<section id="how">
+  <div class="section-label">how it works</div>
+  <div class="section-title">Three steps,<br>zero configuration</div>
+  <div class="how">
+    <div class="step" data-n="01">
+      <div class="step-num">01</div>
+      <div class="step-line"></div>
+      <h3>Install the app</h3>
+      <p>Click install and authorize GitWhisperer on your GitHub account or organization.</p>
+    </div>
+    <div class="step" data-n="02">
+      <div class="step-num">02</div>
+      <div class="step-line"></div>
+      <h3>Open a pull request</h3>
+      <p>Open any PR on a repo where GitWhisperer is installed. That's it.</p>
+    </div>
+    <div class="step" data-n="03">
+      <div class="step-num">03</div>
+      <div class="step-line"></div>
+      <h3>Get your review</h3>
+      <p>Within seconds, GitWhisperer posts a structured AI review as a comment on your PR.</p>
+    </div>
+  </div>
+</section>
+
+<hr class="divider">
+
+<div class="cta-section">
+  <h2>Start reviewing smarter</h2>
+  <p>Free to install. Works on any GitHub repo.</p>
+  <a href="https://github.com/apps/git-whisper/installations/new" class="btn-primary" style="margin:0 auto;display:inline-flex">
+    <svg viewBox="0 0 24 24" fill="currentColor" style="width:18px;height:18px"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+    Install on GitHub — it's free
+  </a>
+</div>
+
+<footer>
+  <div class="footer-logo">git-whisper © 2026</div>
+  <div class="footer-links">
+    <a href="https://github.com/chirraaggggg/GitWhisperer">GitHub</a>
+    <a href="https://github.com/apps/git-whisper/installations/new">Install</a>
+  </div>
+</footer>
+
+</body>
+</html>
