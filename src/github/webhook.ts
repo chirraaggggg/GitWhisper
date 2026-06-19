@@ -1,7 +1,14 @@
 import type { Context } from "hono";
+import { Webhooks } from "@octokit/webhooks";
 import { getPullRequestFiles } from "./pullRequests";
 import { postReviewComment } from "./comments";
 import { analyzeCode } from "../ai/analyzer";
+import { env } from "../shared/env";
+
+// Created once when server starts — not on every request
+const webhooks = new Webhooks({
+  secret: env.GITHUB_WEBHOOK_SECRET,
+});
 
 async function processReview(
   installationId: number,
@@ -23,7 +30,27 @@ async function processReview(
 }
 
 export async function handleWebhook(c: Context) {
-  const payload = await c.req.json();
+  // Step 1 — read raw body as text (needed for signature verification)
+  const body = await c.req.text();
+
+  // Step 2 — get the signature GitHub sent
+  const signature = c.req.header("x-hub-signature-256");
+
+  // Step 3 — reject if signature is missing
+  if (!signature) {
+    console.warn("Missing signature — request rejected");
+    return c.json({ error: "Unauthorized" }, 401);
+  }
+
+  // Step 4 — verify signature matches
+  const isValid = await webhooks.verify(body, signature);
+  if (!isValid) {
+    console.warn("Invalid signature — request rejected");
+    return c.json({ error: "Unauthorized" }, 401);
+  }
+
+  // Step 5 — safe to parse now
+  const payload = JSON.parse(body);
 
   if (payload.action !== "opened" && payload.action !== "synchronize") {
     return c.json({ skipped: true });
@@ -34,7 +61,9 @@ export async function handleWebhook(c: Context) {
   const owner = base.repo.owner.login;
   const repo = base.repo.name;
 
-  // Fire and forget — don't await
+  console.log(`PR #${number} on ${owner}/${repo}`);
+
+  // Fire and forget — respond immediately
   processReview(installationId, owner, repo, number);
 
   return c.json({ success: true });
