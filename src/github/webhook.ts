@@ -16,17 +16,39 @@ async function processReview(
   repo: string,
   pullNumber: number
 ) {
-  const files = await getPullRequestFiles(owner, repo, pullNumber, installationId);
+  try {
+    // RISKY — GitHub API call, can fail entirely
+    const files = await getPullRequestFiles(owner, repo, pullNumber, installationId);
 
-  let fullReview = "";
-  for (const file of files) {
-    if (!file.patch) continue;
-    const review = await analyzeCode(file.filename, file.status, file.patch);
-    fullReview += `### ${file.filename}\n${review}\n\n`;
+    let fullReview = "";
+
+    for (const file of files) {
+      if (!file.patch) continue;
+
+      try {
+        // RISKY — Groq API call, can fail per file
+        const review = await analyzeCode(file.filename, file.status, file.patch);
+        fullReview += `### ${file.filename}\n${review}\n\n`;
+      } catch (err) {
+        // one file failed — log it, add fallback, keep going
+        console.error(`Failed to analyze ${file.filename}:`, err);
+        fullReview += `### ${file.filename}\n> Could not analyze this file.\n\n`;
+      }
+    }
+
+    if (!fullReview) {
+      console.log(`No reviewable files in PR #${pullNumber}`);
+      return;
+    }
+
+    // RISKY — GitHub API call, can fail
+    await postReviewComment(owner, repo, pullNumber, fullReview, installationId);
+    console.log(`Review posted for PR #${pullNumber}`);
+
+  } catch (err) {
+    // entire operation failed — log and give up
+    console.error(`Failed to process PR #${pullNumber}:`, err);
   }
-
-  await postReviewComment(owner, repo, pullNumber, fullReview, installationId);
-  console.log(`Review posted for PR #${pullNumber}`);
 }
 
 export async function handleWebhook(c: Context) {
