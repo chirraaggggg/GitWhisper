@@ -4,6 +4,7 @@ import { getPullRequestFiles } from "./pullRequests";
 import { postReviewComment } from "./comments";
 import { analyzeCode } from "../ai/analyzer";
 import { env } from "../shared/env";
+import { logger } from "../shared/logger";
 
 // Created once when server starts — not on every request
 const webhooks = new Webhooks({
@@ -31,23 +32,23 @@ async function processReview(
         fullReview += `### ${file.filename}\n${review}\n\n`;
       } catch (err) {
         // one file failed — log it, add fallback, keep going
-        console.error(`Failed to analyze ${file.filename}:`, err);
+        logger.error(`Failed to analyze ${file.filename}:`, err);
         fullReview += `### ${file.filename}\n> Could not analyze this file.\n\n`;
       }
     }
 
     if (!fullReview) {
-      console.log(`No reviewable files in PR #${pullNumber}`);
+      logger.info(`No reviewable files in PR #${pullNumber}`);
       return;
     }
 
     // RISKY — GitHub API call, can fail
     await postReviewComment(owner, repo, pullNumber, fullReview, installationId);
-    console.log(`Review posted for PR #${pullNumber}`);
+    logger.info(`Review posted for PR #${pullNumber}`);
 
   } catch (err) {
     // entire operation failed — log and give up
-    console.error(`Failed to process PR #${pullNumber}:`, err);
+    logger.error(`Failed to process PR #${pullNumber}:`, err);
   }
 }
 
@@ -60,14 +61,14 @@ export async function handleWebhook(c: Context) {
 
   // Step 3 — reject if signature is missing
   if (!signature) {
-    console.warn("Missing signature — request rejected");
+    logger.warn("Missing signature — request rejected");
     return c.json({ error: "Unauthorized" }, 401);
   }
 
   // Step 4 — verify signature matches
   const isValid = await webhooks.verify(body, signature);
   if (!isValid) {
-    console.warn("Invalid signature — request rejected");
+    logger.warn("Invalid signature — request rejected");
     return c.json({ error: "Unauthorized" }, 401);
   }
 
@@ -75,6 +76,7 @@ export async function handleWebhook(c: Context) {
   const payload = JSON.parse(body);
 
   if (payload.action !== "opened" && payload.action !== "synchronize") {
+    logger.info(`Skipping PR #${payload.pull_request.number}`);
     return c.json({ skipped: true });
   }
 
@@ -83,7 +85,7 @@ export async function handleWebhook(c: Context) {
   const owner = base.repo.owner.login;
   const repo = base.repo.name;
 
-  console.log(`PR #${number} on ${owner}/${repo}`);
+  logger.info(`PR #${number} on ${owner}/${repo}`);
 
   // Fire and forget — respond immediately
   processReview(installationId, owner, repo, number);
