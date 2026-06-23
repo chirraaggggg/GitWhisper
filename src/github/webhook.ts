@@ -5,6 +5,7 @@ import { postReviewComment } from "./comments";
 import { analyzeCode } from "../ai/analyzer";
 import { env } from "../shared/env";
 import { logger } from "../shared/logger";
+import { isRateLimited } from "../shared/ratelimiter";
 
 // Created once when server starts — not on every request
 const webhooks = new Webhooks({
@@ -88,7 +89,14 @@ export async function handleWebhook(c: Context) {
   logger.info(`PR #${number} on ${owner}/${repo}`);
 
   // Fire and forget — respond immediately
-  processReview(installationId, owner, repo, number);
+
+  const rateLimitKey = `${owner}/${repo}`;
+if (isRateLimited(rateLimitKey, 60000)) {
+  logger.warn(`Rate limited: ${rateLimitKey}`);
+  return c.json({ skipped: true, reason: "rate limited" });
+}
+
+processReview(installationId, owner, repo, number);
 
   return c.json({ success: true });
 }
